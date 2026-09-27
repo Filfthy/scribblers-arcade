@@ -2465,9 +2465,18 @@ const GX = (() => {
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
     for (const [x, y] of poly) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
     G.save(); G.beginPath(); poly.forEach(([x, y], i) => i ? G.lineTo(x, y) : G.moveTo(x, y)); G.closePath(); G.clip();
-    const pts = [], sl = (y1 - y0) * 0.45;
-    for (let x = x0 - sl - 2, k = 0; x < x1 + 2; x += gap, k++) pts.push(k & 1 ? [x + sl + (R() - .5), y1 + 1] : [x + (R() - .5), y0 - 1]);
-    pen(pts, { w: w || 1.0, col, wob: 0.25 });
+    // a hand, not a machine: the spacing wanders, the slant drifts, some strokes stop short,
+    // and every so often the pen lifts and starts again a little further back
+    const H = y1 - y0, strokes = []; let pts = [], sl = H * (0.35 + R() * 0.2), x = x0 - H * 0.6 - 2, k = 0, run = 0, lim = 6 + R() * 14;
+    while (x < x1 + 2) {
+      sl = Math.max(H * 0.18, Math.min(H * 0.8, sl + (R() - .5) * H * 0.14));
+      const reach = R() < 0.18 ? 0.55 + R() * 0.3 : 0.92 + R() * 0.12;
+      pts.push(k & 1 ? [x + sl + (R() - .5) * gap * 0.5, y1 + 1 - (1 - reach) * H] : [x + (R() - .5) * gap * 0.5, y0 - 1 + (1 - reach) * H]);
+      x += gap * (0.55 + R() * 0.95); k++; run++;
+      if (run > lim && R() < 0.4) { strokes.push(pts); pts = []; run = 0; lim = 6 + R() * 14; x -= gap * (0.3 + R() * 0.8); }
+    }
+    strokes.push(pts);
+    strokes.forEach(q => { if (q.length > 1) pen(q, { w: (w || 1.0) * (0.85 + R() * 0.3), col, wob: 0.3 }); });
     G.restore();
   }
   function shape(poly, R, col, w, fill, gap) {
@@ -3816,9 +3825,18 @@ const FG = (() => {
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
     for (const [x, y] of poly) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
     G.save(); G.beginPath(); poly.forEach(([x, y], i) => i ? G.lineTo(x, y) : G.moveTo(x, y)); G.closePath(); G.clip();
-    const pts = [], sl = (y1 - y0) * 0.45;
-    for (let x = x0 - sl - 2, k = 0; x < x1 + 2; x += gap, k++) pts.push(k & 1 ? [x + sl + (R() - .5), y1 + 1] : [x + (R() - .5), y0 - 1]);
-    pen(pts, { w: w || 1.0, col, wob: 0.25 });
+    // a hand, not a machine: the spacing wanders, the slant drifts, some strokes stop short,
+    // and every so often the pen lifts and starts again a little further back
+    const H = y1 - y0, strokes = []; let pts = [], sl = H * (0.35 + R() * 0.2), x = x0 - H * 0.6 - 2, k = 0, run = 0, lim = 6 + R() * 14;
+    while (x < x1 + 2) {
+      sl = Math.max(H * 0.18, Math.min(H * 0.8, sl + (R() - .5) * H * 0.14));
+      const reach = R() < 0.18 ? 0.55 + R() * 0.3 : 0.92 + R() * 0.12;
+      pts.push(k & 1 ? [x + sl + (R() - .5) * gap * 0.5, y1 + 1 - (1 - reach) * H] : [x + (R() - .5) * gap * 0.5, y0 - 1 + (1 - reach) * H]);
+      x += gap * (0.55 + R() * 0.95); k++; run++;
+      if (run > lim && R() < 0.4) { strokes.push(pts); pts = []; run = 0; lim = 6 + R() * 14; x -= gap * (0.3 + R() * 0.8); }
+    }
+    strokes.push(pts);
+    strokes.forEach(q => { if (q.length > 1) pen(q, { w: (w || 1.0) * (0.85 + R() * 0.3), col, wob: 0.3 }); });
     G.restore();
   }
   const withCol = (c, f) => { const o = PENCOL; PENCOL = c; f(); PENCOL = o; };
@@ -4382,7 +4400,7 @@ const FG = (() => {
     // the two purple verges, coloured in with light hatching
     for (const [y0, y1, sd] of [[128, 143, 50200], [224, 239, 50300]]) {
       const Rv = rng(sd); SEEDC = sd;
-      withCol(BLACK_L, () => { const pts = []; for (let x = X(0), k = 0; x < X(224); x += 7, k++) pts.push(k & 1 ? [x + 10, Y(y1) - 2 + Rv()] : [x, Y(y0) + 2 + Rv()]); pen(pts, { w: 0.9, wob: 0.3 }); });
+      withCol(BLACK_L, () => scribble([[X(0), Y(y0) + 2], [X(224), Y(y0) + 2], [X(224), Y(y1) - 2], [X(0), Y(y1) - 2]], Rv, BLACK_L, 7, 0.9));
       withCol(BLACK, () => { pen(line(X(0), Y(y0), X(224), Y(y0), Rv, 1.2), { w: 1.3 }); pen(line(X(0), Y(y1 + 1), X(224), Y(y1 + 1), Rv, 1.2), { w: 1.3 }); });
     }
     // the hedge along the top, with the five bays cut into it
@@ -7195,7 +7213,7 @@ const MC = (() => {
       pen(pts, { w: (w || 1.25) * T.r(0.85, 1.15), col, seed: seed + c * 7, wob: 0.7, nogob: c > 0 });
     }
   }
-  function head(x, y, seed, col, r) {
+  function head(x, y, seed, col, r) {                  // the warhead: an inked dot in the missile's own pen, steady (no flashing)
     const R = kidR(seed); withCol(col, () => { SEEDC = seed; dot(x, y, r || 2.1, R); });
   }
   function crossX(x, y, s, col, seed) {                  // the "X" an ABM is heading for
@@ -7458,7 +7476,7 @@ const MC = (() => {
       const o = O[i], d = disp[i], [hx, hy] = at(i), sd = 5000 + d.id * 17;
       if (core.isSmart(i - 8)) { drawSmart(X(hx), Y(hy), sd, C.icbm); continue; }
       trail(X(o.oH), Y(o.oV), X(hx), Y(hy), sd, C.icbm, 1.3);
-      head(X(hx), Y(hy), sd + 3, PENS[(boil + d.id) % 4], 2.3);
+      head(X(hx), Y(hy), sd + 3, C.icbm, 2.3);
     }
     for (let i = 0; i < 8; i++) {
       if (!disp[i].alive) continue;
@@ -7554,7 +7572,7 @@ const MC = (() => {
       const C = SCHEME[0], k = P((tt - 1.8) / 2.5);
       G.save(); G.translate(450 - X(core.CICPH[3]), 290 - Y(core.CICPV[3] - 4)); drawCity(3, C); G.restore();
       const hx = 520 - 150 * k, hy = 190 + 60 * k;
-      trail(560, 190 - 12, hx, hy, 97510, RED, 1.3); head(hx, hy, 97511, PENS[boil % 4], 2.3);
+      trail(560, 190 - 12, hx, hy, 97510, RED, 1.3); head(hx, hy, 97511, RED, 2.3);
       if (k >= 1) {
         const tb = (tt - 4.3) % 3.2, r = clamp(tb < 1.1 ? tb / 1.1 : tb < 2.3 ? 1 : 1 - (tb - 2.3) / 0.9, 0, 1) * 13;
         trail(380, 300, hx - 2, hy + 2, 97512, INK, 1.2);
@@ -12138,7 +12156,7 @@ const PX = (() => {
     for (let i = planets.length - 1; i >= 0; i--) if (planets[i].y - planets[i].r * 1.6 > 260) planets.splice(i, 1);
     if (--planetT <= 0 && planets.length < 2) {
       const T = traits(88500 + (++planetN) * 13), r = T.r(9, 22), x = T.r(20, 188);
-      if (!planets.some(p => Math.abs(p.x - x) < p.r * 1.6 + r * 1.6 + 36 && p.y < 60)) planets.push({ x, y: -r * 1.8, r, type: T.p(['rocky', 'ringed', 'land']), seed: 88500 + planetN * 13 });
+      if (!planets.some(p => Math.abs(p.x - x) < p.r * 2.4 + r * 2.4 + 30 && p.y < 60)) planets.push({ x, y: -r * 1.8, r, type: T.p(['rocky', 'ringed', 'land']), seed: 88500 + planetN * 13 });
       planetT = 61 * T.r(14, 32);
     }
   }
@@ -12184,12 +12202,34 @@ const PX = (() => {
     const disc = []; for (let i = 0; i < 40; i++) { const a = i / 40 * TAUq; disc.push([cx + Math.cos(a) * r * 1.01, cy + Math.sin(a) * r * 1.01]); }
     const col = T.p([INK, GREEN, BLACK]);
     const inside = f => { G.save(); G.beginPath(); disc.forEach(([x, y], i) => i ? G.lineTo(x, y) : G.moveTo(x, y)); G.clip(); f(); G.restore(); };
-    let ringFront = null;
+    let ringFront = null, lat = null;
     if (p.type === 'ringed') {
-      const tilt = T.r(-0.35, 0.35), rw = r * T.r(1.55, 1.85), rh = r * T.r(0.28, 0.42), bands = T.i(1, 2);
-      const ring = (a0, sc) => { const pts = []; for (let i = 0; i <= 24; i++) { const a = a0 + i / 24 * Math.PI, x = Math.cos(a) * rw * sc, y = Math.sin(a) * rh * sc; pts.push([cx + x * Math.cos(tilt) - y * Math.sin(tilt), cy + x * Math.sin(tilt) + y * Math.cos(tilt)]); } return pts; };
-      for (let k = 0; k < bands; k++) pen(ring(Math.PI, 1 - k * 0.14), { w: 1.2, col: RED, seed: p.seed + 1 + k });     // the far half of the ring...
-      ringFront = () => { for (let k = 0; k < bands; k++) pen(ring(0, 1 - k * 0.14), { w: 1.3, col: RED, seed: p.seed + 6 + k }); };
+      // The ring is a flat band round the equator, seen from a little above: an ellipse whose squash
+      // (rh/rw) is the viewing angle. Its far half goes behind the ball, its near half across the
+      // front of it, and as a solid band it hides the bit of ball behind it. The ball's own stripes
+      // are latitude circles seen from the same angle, so they tilt and curve with the ring.
+      const tilt = T.r(-0.4, 0.4), rw = r * T.r(2.0, 2.35), squash = T.r(0.2, 0.34), rh = rw * squash;
+      const ki = Math.max(1.18 * r / rw, T.r(0.6, 0.7)), gapAt = T.c(0.6) ? T.r(0.72, 0.85) : 0;
+      const rot = (x, y) => [cx + x * Math.cos(tilt) - y * Math.sin(tilt), cy + x * Math.sin(tilt) + y * Math.cos(tilt)];
+      const J = () => (R() - 0.5) * r * 0.05;                  // a hand going round, not a compass
+      const arcE = (a0, a1, k, n = 26) => { const q = []; for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; q.push(rot(Math.cos(a) * rw * k + J(), Math.sin(a) * rh * k + J() * 0.5)); } return q; };
+      const band = (a0, a1) => arcE(a0, a1, 1).concat(arcE(a1, a0, ki));      // half an annulus as one shape
+      const edges = (a0, a1, w, sd) => {
+        pen(arcE(a0 - 0.04, a1 + 0.05, 1), { w, col: RED, seed: sd, wob: 0.3 });
+        pen(arcE(a0 + 0.02, a1 - 0.03, ki), { w: w * 0.85, col: RED, seed: sd + 1, wob: 0.3 });
+        if (gapAt) pen(arcE(a0 + 0.06, a1 - 0.08, ki + (1 - ki) * gapAt), { w: w * 0.7, col: RED, seed: sd + 2, wob: 0.4 });   // the gap in the rings
+      };
+      const hatch = (a0, a1, sd) => scribbleIn(band(a0, a1), T.r(2.6, 3.6), LIGHT.get(RED), 1, tilt + T.r(0.9, 1.4), sd);
+      hatch(Math.PI, TAUq, p.seed + 50); edges(Math.PI, TAUq, 1.2, p.seed + 1);          // the far half first...
+      ringFront = () => { erase([band(0, Math.PI)]); hatch(0, Math.PI, p.seed + 51); edges(0, Math.PI, 1.35, p.seed + 6); };
+      lat = () => {                                            // latitude stripes, front halves only
+        const n = T.i(2, 3);
+        for (let k = 0; k < n; k++) {
+          const h = r * (-0.55 + (k + T.r(0.2, 0.8)) * 1.1 / n), w = Math.sqrt(Math.max(0, r * r - h * h)), q = [];
+          for (let i = 0; i <= 18; i++) { const a = i / 18 * Math.PI; q.push(rot(Math.cos(a) * w, h * Math.sqrt(1 - squash * squash) + Math.sin(a) * w * squash + J() * 0.4)); }
+          pen(q, { w: 0.9, col, seed: p.seed + 3 + k, wob: 0.3 });
+        }
+      };
     }
     erase([disc]);                                           // ...goes behind the ball, and so do the stars
     pen(body, { w: 1.4, col, seed: p.seed });
@@ -12210,7 +12250,7 @@ const PX = (() => {
       inside(() => {
         const sh = loop(cx + r * 0.5, cy + r * 0.35, r * 1.05, r * 1.05, R);   // the dark side
         scribbleIn(sh, 3.2, LIGHT.get(col), 1, 0.9, p.seed + 2);
-        if (p.type === 'ringed') for (let k = -1; k <= 1; k += 2) pen(curve([[cx - r, cy + k * r * 0.32], [cx, cy + k * r * 0.32 + r * 0.1], [cx + r, cy + k * r * 0.32]]), { w: 0.9, col, seed: p.seed + 3 + k });
+        if (p.type === 'ringed') lat();
         else spread(T, T.i(4, 7), r * 0.07, r * 0.18, r * 0.9, 1.25).forEach((o, k) => {
           const rim = onBall(cx, cy, r, o, () => { const q = []; for (let i = 0; i <= 14; i++) { const a = i / 14 * TAUq; q.push([Math.cos(a) * o.r, Math.sin(a) * o.r * 0.95]); } return q; });
           pen(rim, { w: 1, col, seed: p.seed + 20 + k });
